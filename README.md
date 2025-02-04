@@ -1,23 +1,23 @@
 # Number Classification API
 
-This is a FastAPI-based microservice that classifies numbers based on various mathematical properties and provides a fun fact.
+## Overview
+This is a FastAPI-based API that classifies numbers by checking their mathematical properties and fetching a fun fact about them.
 
 ## Features
-- Determines if a number is **prime** or **perfect**.
-- Identifies number properties (e.g., **Armstrong number**, **even/odd**).
-- Calculates the **sum of its digits**.
-- Fetches a **fun fact** about the number.
-- Supports **CORS** for cross-origin requests.
+- Determines if a number is prime, perfect, or an Armstrong number.
+- Identifies if a number is even or odd.
+- Computes the digit sum.
+- Fetches a fun fact using [NumbersAPI](http://numbersapi.com/).
+- Returns responses in JSON format.
+- Handles CORS for cross-origin requests.
 
 ## API Specification
 
-### **Endpoint:**
-```plaintext
-GET /api/classify-number?number=<integer>
-```
+### Endpoint
+**GET** `/api/classify-number?number=371`
 
-### **Response Format:**
-#### **200 OK**
+### Response Format
+#### 200 OK
 ```json
 {
     "number": 371,
@@ -28,8 +28,7 @@ GET /api/classify-number?number=<integer>
     "fun_fact": "371 is an Armstrong number because 3^3 + 7^3 + 1^3 = 371"
 }
 ```
-
-#### **400 Bad Request** (Invalid Input)
+#### 400 Bad Request
 ```json
 {
     "number": "alphabet",
@@ -37,96 +36,89 @@ GET /api/classify-number?number=<integer>
 }
 ```
 
-## Setup & Installation
+## Installation
+### Prerequisites
+- Python 3.8+
+- Git
+- Virtual Environment
 
-### **1. Clone Repository**
+### Setup
 ```sh
-git clone https://github.com/your-username/number-classification-api.git
-cd number-classification-api
-```
-
-### **2. Create Virtual Environment & Install Dependencies**
-```sh
+git clone <your-repo-url>
+cd hng_fast_api_devops
 python3 -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### **3. Run the API Locally**
+## Running Locally
 ```sh
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-## Deployment (NGINX + Systemd)
+## Deployment with Nginx
+### Configure Systemd Service
+1. Create a service file:
+   ```sh
+   sudo nano /etc/systemd/system/fastapi.service
+   ```
+   Add the following:
+   ```ini
+   [Unit]
+   Description=FastAPI Application
+   After=network.target
+   
+   [Service]
+   User=root
+   Group=www-data
+   WorkingDirectory=/var/www/hng_fast_api_devops
+   ExecStart=/var/www/hng_fast_api_devops/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+   Restart=always
+   
+   [Install]
+   WantedBy=multi-user.target
+   ```
 
-### **1. Configure Systemd Service**
-Create `/etc/systemd/system/fastapi.service`:
-```ini
-[Unit]
-Description=FastAPI Application
-After=network.target
+2. Start and enable service:
+   ```sh
+   sudo systemctl daemon-reload
+   sudo systemctl enable fastapi
+   sudo systemctl start fastapi
+   ```
 
-[Service]
-User=root
-Group=www-data
-WorkingDirectory=/var/www/hng_fast_api_devops
-ExecStart=/var/www/hng_fast_api_devops/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
-Restart=always
+### Configure Nginx
+1. Create an Nginx config file:
+   ```sh
+   sudo nano /etc/nginx/sites-available/fastapi
+   ```
+   Add:
+   ```nginx
+   server {
+       listen 80;
+       server_name 164.92.218.181;
+       
+       location / {
+           proxy_pass http://127.0.0.1:8000;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+       }
+   }
+   ```
 
-[Install]
-WantedBy=multi-user.target
-```
-Reload and start service:
+2. Enable the site:
+   ```sh
+   sudo ln -s /etc/nginx/sites-available/fastapi /etc/nginx/sites-enabled/
+   sudo nginx -t
+   sudo systemctl restart nginx
+   ```
+
+## Testing
 ```sh
-sudo systemctl daemon-reload
-sudo systemctl enable fastapi
-sudo systemctl start fastapi
-sudo systemctl status fastapi
-```
-
-### **2. Configure Nginx Reverse Proxy**
-Create `/etc/nginx/sites-available/fastapi`:
-```nginx
-server {
-    listen 80;
-    server_name your-server-ip;
-    
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-Enable and restart Nginx:
-```sh
-sudo ln -s /etc/nginx/sites-available/fastapi /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl restart nginx
-```
-
-### **3. Open Firewall Ports**
-```sh
-sudo ufw allow 80
-sudo ufw allow 443
-sudo ufw reload
-```
-
-## Testing the API
-
-### **Using cURL**
-```sh
-curl -X GET http://your-server-ip/api/classify-number?number=371
-```
-
-### **Using a Browser**
-Visit:
-```plaintext
-http://your-server-ip/api/classify-number?number=371
+curl -X GET http://164.92.218.181/api/classify-number?number=371
 ```
 
 ## License
-MIT License
+This project is licensed under the MIT License.
 
