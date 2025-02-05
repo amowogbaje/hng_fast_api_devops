@@ -1,7 +1,6 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException
 import requests
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 app = FastAPI()
 
@@ -32,28 +31,13 @@ def is_armstrong(n: int) -> bool:
 
 @app.get("/api/classify-number")
 async def classify_number(number: str = Query(..., description="Number to classify")):
-    response_data = {
-        "number": number,
-        "is_prime": False,
-        "is_perfect": False,
-        "properties": [],
-        "digit_sum": 0,
-        "fun_fact": "No fun fact available"
-    }
-    status_code = 200
-
     try:
         number_float = float(number)
     except ValueError:
-        # Invalid input, calculate digit sum from the original string
-        response_data["digit_sum"] = sum(int(c) for c in number if c.isdigit())
-        try:
-            fact_response = requests.get(f"http://numbersapi.com/{number}")
-            if fact_response.status_code == 200:
-                response_data["fun_fact"] = fact_response.text
-        except:
-            pass
-        return JSONResponse(content=response_data, status_code=400)
+        raise HTTPException(
+            status_code=400,
+            detail={"message": "Invalid input. Please enter a valid number.", "number": number}
+        )
 
     if number_float.is_integer():
         number_int = int(number_float)
@@ -67,21 +51,27 @@ async def classify_number(number: str = Query(..., description="Number to classi
             num_properties.append("perfect")
         if is_armstrong_val:
             num_properties.append("armstrong")
-        response_data.update({
-            "is_prime": is_prime_val,
-            "is_perfect": is_perfect_val,
-            "properties": num_properties,
-            "digit_sum": sum(int(d) for d in str(abs(number_int)))
-        })
+        digit_sum = sum(int(d) for d in str(abs(number_int)))
     else:
-        response_data["digit_sum"] = sum(int(c) for c in number if c.isdigit())
+        num_properties = []
+        is_prime_val = False
+        is_perfect_val = False
+        is_armstrong_val = False
+        digit_sum = sum(int(c) for c in number if c.isdigit())
 
-    # Fetch fun fact for valid numbers
+    fun_fact = "No fun fact available"
     try:
         fact_response = requests.get(f"http://numbersapi.com/{number_float}")
         if fact_response.status_code == 200:
-            response_data["fun_fact"] = fact_response.text
+            fun_fact = fact_response.text
     except:
-        pass
+        pass  # Ignore API errors
 
-    return JSONResponse(content=response_data, status_code=status_code)
+    return {
+        "number": number_float,
+        "is_prime": is_prime_val,
+        "is_perfect": is_perfect_val,
+        "properties": num_properties,
+        "digit_sum": digit_sum,
+        "fun_fact": fun_fact
+    }
