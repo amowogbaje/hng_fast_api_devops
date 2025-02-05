@@ -6,7 +6,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Change this in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -30,45 +30,40 @@ def is_armstrong(n: int) -> bool:
     return sum(d ** len(digits) for d in digits) == abs(n)
 
 @app.get("/api/classify-number")
-async def classify_number(number: str = Query(..., description="Number to classify")):
+async def classify_number(number: float = Query(..., description="Number to classify")):
     try:
-        number_float = float(number)
+        # Check if the input is valid (numeric values are acceptable)
+        if not isinstance(number, (int, float)):
+            raise HTTPException(status_code=400, detail="Invalid input. Please enter a valid number.")
+
+        num_properties = ["even" if number % 2 == 0 else "odd"]
+
+        if is_prime(int(number)):
+            num_properties.append("prime")
+        if is_perfect(int(number)):
+            num_properties.append("perfect")
+        if is_armstrong(int(number)):
+            num_properties.append("armstrong")
+
+        digit_sum = sum(int(d) for d in str(abs(int(number))))
+
+        # Fetch fun fact
+        fun_fact = "No fun fact available"
+        try:
+            fact_response = requests.get(f"http://numbersapi.com/{int(number)}")
+            if fact_response.status_code == 200:
+                fun_fact = fact_response.text
+        except:
+            pass  # Ignore API errors
+
+        return {
+            "number": number,
+            "is_prime": is_prime(int(number)),
+            "is_perfect": is_perfect(int(number)),
+            "properties": num_properties,
+            "digit_sum": digit_sum,
+            "fun_fact": fun_fact
+        }
+
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid input. Please enter a valid number.")
-
-    if number_float.is_integer():
-        number_int = int(number_float)
-        num_properties = ["even" if number_int % 2 == 0 else "odd"]
-        is_prime_val = is_prime(number_int)
-        is_perfect_val = is_perfect(number_int)
-        is_armstrong_val = is_armstrong(number_int)
-        if is_prime_val:
-            num_properties.append("prime")
-        if is_perfect_val:
-            num_properties.append("perfect")
-        if is_armstrong_val:
-            num_properties.append("armstrong")
-        digit_sum = sum(int(d) for d in str(abs(number_int)))
-    else:
-        num_properties = []
-        is_prime_val = False
-        is_perfect_val = False
-        is_armstrong_val = False
-        digit_sum = sum(int(c) for c in number if c.isdigit())
-
-    fun_fact = "No fun fact available"
-    try:
-        fact_response = requests.get(f"http://numbersapi.com/{number_float}")
-        if fact_response.status_code == 200:
-            fun_fact = fact_response.text
-    except:
-        pass  # Ignore API errors
-
-    return {
-        "number": number_float,
-        "is_prime": is_prime_val,
-        "is_perfect": is_perfect_val,
-        "properties": num_properties,
-        "digit_sum": digit_sum,
-        "fun_fact": fun_fact
-    }
