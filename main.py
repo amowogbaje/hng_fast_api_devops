@@ -34,10 +34,10 @@ async def classify_number(number: str = Query(..., description="Number to classi
     try:
         number_float = float(number)
     except ValueError:
-        raise HTTPException(
-            status_code=400,
-            detail={"message": "Invalid input. Please enter a valid number.", "number": number}
-        )
+        return {
+            "number": number,  # Ensure invalid input is included in the response
+            "error": "Invalid input. Please enter a valid number."
+        }
 
     if number_float.is_integer():
         number_int = int(number_float)
